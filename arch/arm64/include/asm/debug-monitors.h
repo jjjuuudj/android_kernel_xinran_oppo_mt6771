@@ -68,6 +68,8 @@
 #define BRK64_ESR_MASK		0xFFFF
 #define BRK64_ESR_KPROBES	0x0004
 #define BRK64_OPCODE_KPROBES	(AARCH64_BREAK_MON | (BRK64_ESR_KPROBES << 5))
+#define BRK64_ESR_KPROBES_SS	0x0006
+#define BRK64_OPCODE_KPROBES_SS	(AARCH64_BREAK_MON | (BRK64_ESR_KPROBES_SS << 5))
 /* uprobes BRK opcodes with ESR encoding  */
 #define BRK64_ESR_UPROBES	0x0005
 #define BRK64_OPCODE_UPROBES	(AARCH64_BREAK_MON | (BRK64_ESR_UPROBES << 5))
@@ -125,6 +127,7 @@ void user_regs_reset_single_step(struct user_pt_regs *regs,
 void kernel_enable_single_step(struct pt_regs *regs);
 void kernel_disable_single_step(void);
 int kernel_active_single_step(void);
+void kernel_rewind_single_step(struct pt_regs *regs);
 
 #ifdef CONFIG_HAVE_HW_BREAKPOINT
 int reinstall_suspended_bps(struct pt_regs *regs);

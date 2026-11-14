@@ -472,6 +472,11 @@ struct vm_operations_struct {
 #endif
 };
 
+static inline bool vma_is_accessible(struct vm_area_struct *vma)
+{
+	return vma->vm_flags & (VM_READ | VM_EXEC | VM_WRITE);
+}
+
 struct mmu_gather;
 struct inode;
 
@@ -807,6 +812,8 @@ int finish_mkwrite_fault(struct vm_fault *vmf);
 #define ZONES_PGOFF		(NODES_PGOFF - ZONES_WIDTH)
 #define LAST_CPUPID_PGOFF	(ZONES_PGOFF - LAST_CPUPID_WIDTH)
 #define KASAN_TAG_PGOFF		(LAST_CPUPID_PGOFF - KASAN_TAG_WIDTH)
+#define LRU_GEN_PGOFF		(KASAN_TAG_PGOFF - LRU_GEN_WIDTH)
+#define LRU_REFS_PGOFF		(LRU_GEN_PGOFF - LRU_REFS_WIDTH)
 
 /*
  * Define the bit shifts to access each section.  For non-existent
@@ -1347,16 +1354,8 @@ static inline void INIT_VMA(struct vm_area_struct *vma)
 #endif
 }
 
-struct page *__vm_normal_page(struct vm_area_struct *vma, unsigned long addr,
-			      pte_t pte, bool with_public_device,
-			      unsigned long vma_flags);
-static inline struct page *_vm_normal_page(struct vm_area_struct *vma,
-					    unsigned long addr, pte_t pte,
-					    bool with_public_device)
-{
-	return __vm_normal_page(vma, addr, pte, with_public_device,
-				vma->vm_flags);
-}
+struct page *_vm_normal_page(struct vm_area_struct *vma, unsigned long addr,
+			     pte_t pte, bool with_public_device);
 static inline struct page *vm_normal_page(struct vm_area_struct *vma,
 					  unsigned long addr, pte_t pte)
 {
@@ -1696,27 +1695,19 @@ static inline unsigned long get_mm_counter(struct mm_struct *mm, int member)
 	return (unsigned long)val;
 }
 
-void mm_trace_rss_stat(int member, long count, long value);
-
 static inline void add_mm_counter(struct mm_struct *mm, int member, long value)
 {
-	long count = atomic_long_add_return(value, &mm->rss_stat.count[member]);
-
-	mm_trace_rss_stat(member, count, value);
+	atomic_long_add(value, &mm->rss_stat.count[member]);
 }
 
 static inline void inc_mm_counter(struct mm_struct *mm, int member)
 {
-	long count = atomic_long_inc_return(&mm->rss_stat.count[member]);
-
-	mm_trace_rss_stat(member, count, 1);
+	atomic_long_inc(&mm->rss_stat.count[member]);
 }
 
 static inline void dec_mm_counter(struct mm_struct *mm, int member)
 {
-	long count = atomic_long_dec_return(&mm->rss_stat.count[member]);
-
-	mm_trace_rss_stat(member, count, -1);
+	atomic_long_dec(&mm->rss_stat.count[member]);
 }
 
 /* Optimized variant when page is already known not to be PageAnon */
@@ -2363,6 +2354,8 @@ extern struct vm_area_struct *_install_special_mapping(struct mm_struct *mm,
 extern int install_special_mapping(struct mm_struct *mm,
 				   unsigned long addr, unsigned long len,
 				   unsigned long flags, struct page **pages);
+
+unsigned long randomize_page(unsigned long start, unsigned long range);
 
 extern unsigned long get_unmapped_area(struct file *, unsigned long, unsigned long, unsigned long, unsigned long);
 

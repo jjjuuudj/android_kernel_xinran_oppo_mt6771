@@ -2580,6 +2580,24 @@ unlock:
 	return err;
 }
 
+/*
+ * Helpers for the fsopen()/fsmount()/move_mount() API.  do_add_mount() and
+ * clone_mnt() are static to this file, so the new syscalls reach them
+ * through these two entry points.
+ */
+int ksys_add_mount(struct vfsmount *mnt, struct path *path, int mnt_flags)
+{
+	return do_add_mount(real_mount(mnt), path, mnt_flags);
+}
+
+struct vfsmount *ksys_clone_mnt(struct vfsmount *mnt, struct dentry *root,
+				int flag)
+{
+	struct mount *m = clone_mnt(real_mount(mnt), root, flag);
+
+	return m ? &m->mnt : ERR_PTR(-ENOMEM);
+}
+
 static bool mount_too_revealing(struct vfsmount *mnt, int *new_mnt_flags);
 
 /*
@@ -2601,9 +2619,12 @@ static int do_new_mount(struct path *path, const char *fstype, int sb_flags,
 		return -ENODEV;
 
 	mnt = vfs_kern_mount(type, sb_flags, name, data);
-	if (!IS_ERR(mnt) && (type->fs_flags & FS_HAS_SUBTYPE) &&
-	    !mnt->mnt_sb->s_subtype)
-		mnt = fs_set_subtype(mnt, fstype);
+	if (!IS_ERR(mnt) && (type->fs_flags & FS_HAS_SUBTYPE)) {
+		down_write(&mnt->mnt_sb->s_umount);
+		if (!mnt->mnt_sb->s_subtype)
+			mnt = fs_set_subtype(mnt, fstype);
+		up_write(&mnt->mnt_sb->s_umount);
+	}
 
 	put_filesystem(type);
 	if (IS_ERR(mnt))

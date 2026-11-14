@@ -100,7 +100,6 @@ config NF_CONNTRACK_ZONES
 
 config NF_CONNTRACK_PROCFS
 	bool "Supply CT list in procfs (OBSOLETE)"
-	default y
 	depends on PROC_FS
 	---help---
 	This option enables for the list of known conntrack entries
@@ -1365,6 +1364,14 @@ config NETFILTER_XT_MATCH_OSF
 	  http://www.ioremap.net/projects/osf
 
 	  To compile it as a module, choose M here.  If unsure, say N.
+
+config NETFILTER_XT_MATCH_QTAGUID
+	bool '"quota, tag, owner" match and stats support'
+	depends on NETFILTER_XT_MATCH_SOCKET
+	depends on NETFILTER_XT_MATCH_OWNER=n
+	help
+	  This option replaces the `owner' match. In addition to matching
+	  on uid, it keeps stats based on a tag assigned to a socket.
 
 config NETFILTER_XT_MATCH_OWNER
 	tristate '"owner" match support'
