@@ -84,7 +84,7 @@ jobs:
             done
           fi
 
-      - name: 追加 Droidspaces 内核配置
+      - name: 追加 Droidspaces 内核配置 
         run: |
           cd kernel_workspace/common
           cat >> arch/arm64/configs/oppo6771_defconfig << 'EOF'
